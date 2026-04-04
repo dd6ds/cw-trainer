@@ -1,0 +1,12 @@
+[package]
+name = "cw-trainer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "cw-trainer"
+path = "src/main.rs"
+
+[dependencies]
+clap  = { version = "4", features = ["derive"] }
+fastrand = "2"
