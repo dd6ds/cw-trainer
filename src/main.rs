@@ -132,42 +132,57 @@ fn pick<T: Copy>(arr: &[T]) -> T {
     arr[fastrand::usize(0..arr.len())]
 }
 
-fn gen_sentence_en(_n_words: usize) -> String {
-    let nouns = ["cat","dog","house","tree","car","sun","river","book",
-                 "man","woman","child","bird","ship","road","town","field"];
-    let verbs = ["see","hear","find","have","make","take","know","like",
-                 "want","need","show","give","call","keep","tell","try"];
-    let adjs  = ["big","small","old","new","good","fast","slow","red",
-                 "blue","dark","long","short","warm","cold","bright","quiet"];
-    let preps = ["near","by","above","below","beside","inside","outside"];
+fn gen_sentence_en(n_words: usize) -> String {
+    let nouns    = ["cat","dog","house","tree","car","sun","river","book",
+                    "man","woman","child","bird","ship","road","town","field"];
+    let verbs    = ["see","hear","find","have","make","take","know","like",
+                    "want","need","show","give","call","keep","tell","try"];
+    let adjs     = ["big","small","old","new","good","fast","slow","red",
+                    "blue","dark","long","short","warm","cold","bright","quiet"];
+    let articles = ["the", "a"];
 
-    match fastrand::u32(0..4) {
-        0 => format!("the {} {} the {}", pick(&nouns), pick(&verbs), pick(&nouns)),
-        1 => format!("i {} the {} {}",   pick(&verbs), pick(&adjs),  pick(&nouns)),
-        2 => format!("the {} is {} and {}", pick(&nouns), pick(&adjs), pick(&adjs)),
-        _ => format!("a {} {} is {} {}", pick(&adjs), pick(&nouns), pick(&preps), pick(&nouns)),
+    let mut words: Vec<&str> = Vec::new();
+    while words.len() < n_words {
+        let remaining = n_words - words.len();
+        match remaining {
+            1 => words.push(pick(&nouns)),
+            2 => { words.push(pick(&articles)); words.push(pick(&nouns)); }
+            _ => match fastrand::u32(0..4) {
+                0 => words.push(pick(&verbs)),
+                1 => { words.push(pick(&articles)); words.push(pick(&nouns)); }
+                2 => { words.push(pick(&adjs)); words.push(pick(&nouns)); }
+                _ => { words.push(pick(&articles)); words.push(pick(&adjs)); words.push(pick(&nouns)); }
+            },
+        }
     }
+    words.join(" ")
 }
 
-fn gen_sentence_de(_n_words: usize) -> String {
-    let nouns_m = ["hund","baum","mann","zug","wind","berg","fluss","brief"];
-    let nouns_f = ["katze","frau","sonne","stadt","nacht","schule","bahn"];
-    let nouns_n = ["haus","auto","kind","buch","boot","licht","geld","bild"];
-    let verbs   = ["sieht","hoert","hat","macht","nimmt","kennt","liebt",
-                   "sucht","baut","zeigt","findet","sendet","braucht"];
-    let adjs    = ["gross","klein","alt","neu","gut","schnell","ruhig",
-                   "warm","kalt","lang","kurz","stark","schoen","klar"];
+fn gen_sentence_de(n_words: usize) -> String {
+    let nouns_m  = ["hund","baum","mann","zug","wind","berg","fluss","brief"];
+    let nouns_f  = ["katze","frau","sonne","stadt","nacht","schule","bahn"];
+    let nouns_n  = ["haus","auto","kind","buch","boot","licht","geld","bild"];
+    let verbs    = ["sieht","hoert","hat","macht","nimmt","kennt","liebt",
+                    "sucht","baut","zeigt","findet","sendet","braucht"];
+    let adjs     = ["gross","klein","alt","neu","gut","schnell","ruhig",
+                    "warm","kalt","lang","kurz","stark","schoen","klar"];
+    let articles = ["der","die","das","ein","eine"];
 
-    match fastrand::u32(0..4) {
-        0 => format!("der {} ist {}",
-                pick(&nouns_m), pick(&adjs)),
-        1 => format!("die {} {} das {}",
-                pick(&nouns_f), pick(&verbs), pick(&nouns_n)),
-        2 => format!("das {} ist {} und {}",
-                pick(&nouns_n), pick(&adjs), pick(&adjs)),
-        _ => format!("ein {} {} {} {}",
-                pick(&adjs), pick(&nouns_n), pick(&verbs), pick(&nouns_m)),
+    let mut words: Vec<&str> = Vec::new();
+    while words.len() < n_words {
+        let remaining = n_words - words.len();
+        match remaining {
+            1 => words.push(pick(&nouns_n)),
+            2 => { words.push(pick(&articles)); words.push(pick(&nouns_m)); }
+            _ => match fastrand::u32(0..4) {
+                0 => words.push(pick(&verbs)),
+                1 => { words.push(pick(&articles)); words.push(pick(&nouns_f)); }
+                2 => { words.push(pick(&adjs)); words.push(pick(&nouns_n)); }
+                _ => { words.push(pick(&articles)); words.push(pick(&adjs)); words.push(pick(&nouns_m)); }
+            },
+        }
     }
+    words.join(" ")
 }
 
 fn gen_sentence(lang: &str, n: usize) -> String {

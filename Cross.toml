@@ -1,0 +1,8 @@
+# cross build configuration
+# https://github.com/cross-rs/cross
+
+[target.i686-pc-windows-gnu]
+# Use a custom image that adds lld on top of the standard cross image.
+# GNU ld 2.34 (shipped in the base image) rejects the -exclude-symbols
+# .drectve entries that recent Rust toolchains emit; lld handles them fine.
+dockerfile = { file = "docker/Dockerfile.i686-pc-windows-gnu", context = "." }

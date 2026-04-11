@@ -1,0 +1,32 @@
+FROM ghcr.io/cross-rs/i686-pc-windows-gnu:main
+
+# ── Fix 1: replace GNU ld 2.34 with lld-17 ───────────────────────────────────
+# GNU ld 2.34 (Ubuntu 20.04) does not understand the -exclude-symbols .drectve
+# directive emitted by modern Rust/LLVM toolchains.
+# Support for -exclude-symbols in MinGW .drectve was added in LLVM 16
+# (upstream patch D133782). We install lld-17 and symlink it as the MinGW ld.
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends ca-certificates gnupg wget && \
+    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
+    echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-17 main" \
+        > /etc/apt/sources.list.d/llvm.list && \
+    apt-get update -qq && \
+    apt-get install -y --no-install-recommends lld-17 && \
+    rm -rf /var/lib/apt/lists/* && \
+    ln -sf /usr/bin/ld.lld-17 /usr/bin/i686-w64-mingw32-ld
+
+# ── Fix 2: patch ws2_32.a to add GetHostNameW ────────────────────────────────
+# The mingw-w64 7.x packages in Ubuntu 20.04 are missing GetHostNameW in their
+# ws2_32 import library; it was added in mingw-w64 9.x. Rust std for
+# i686-pc-windows-gnu references this symbol, causing a link error.
+# We use dlltool to generate a stub entry and merge it into libws2_32.a.
+RUN WS2_32=$(find /usr -name "libws2_32.a" | head -1) && \
+    printf 'LIBRARY "ws2_32.dll"\nEXPORTS\n  GetHostNameW\n' > /tmp/ghnw.def && \
+    i686-w64-mingw32-dlltool -m i386 --as-flags=--32 \
+        --input-def /tmp/ghnw.def --dllname ws2_32.dll \
+        --output-lib /tmp/libghnw.a && \
+    cp "$WS2_32" "${WS2_32}.orig" && \
+    printf "CREATE /tmp/libws2_32_new.a\nADDLIB ${WS2_32}.orig\nADDLIB /tmp/libghnw.a\nSAVE\nEND\n" \
+        | ar -M && \
+    cp /tmp/libws2_32_new.a "$WS2_32" && \
+    rm -f /tmp/ghnw.def /tmp/libghnw.a /tmp/libws2_32_new.a
