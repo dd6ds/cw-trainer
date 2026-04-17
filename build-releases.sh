@@ -154,6 +154,17 @@ for entry in "${TARGETS[@]}"; do
     echo
 done
 
+# ── bundle data files ────────────────────────────────────────────────────────
+# The callsigns list is looked up next to the binary at runtime (see
+# resolve_callsigns_path in src/main.rs), so ship it alongside the releases.
+if [[ -f "callsigns.txt" ]]; then
+    cp "callsigns.txt" "${RELEASES_DIR}/callsigns.txt"
+    ok "callsigns.txt copied to ${RELEASES_DIR}/"
+else
+    warn "callsigns.txt not found — skipping (callsign mode will need --callsigns-file)"
+fi
+echo
+
 # ── summary ──────────────────────────────────────────────────────────────────
 echo -e "${BOLD}══ Summary ════════════════════════════════════════${NC}"
 echo -e "  Built  : ${GREEN}${BUILT}${NC}"

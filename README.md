@@ -8,7 +8,8 @@ It generates random sentences, plays them as audio CW, and scores your copy.
 ## Features
 
 - Generates random sentences in **English**, **German**, or both
-- Plays CW audio directly via `aplay` (no external dependencies)
+- **Callsign mode** — practice amateur-radio callsigns from a user-editable list
+- Cross-platform audio playback — works on Linux, macOS, and Windows out of the box
 - Farnsworth timing — character speed and effective speed are independent
 - Configurable tone frequency, words per sentence, and WPM
 - Scores each attempt by **word accuracy** and **character accuracy**
@@ -37,11 +38,29 @@ chmod +x releases/cw-trainer-linux-amd64
 
 ### Build from source
 
-Requires [Rust](https://rustup.rs/) and `aplay` (part of `alsa-utils` on most Linux distros).
+Requires [Rust](https://rustup.rs/). On Linux you also need `aplay` (part of
+`alsa-utils` on most distros) or `paplay` (PulseAudio). macOS and Windows have
+the necessary audio tooling built in.
 
 ```bash
 cargo build --release
 ./target/release/cw-trainer
+```
+
+### Cross-compile release binaries
+
+`build-releases.sh` cross-compiles for all supported platforms (Linux, macOS,
+Windows — 32- and 64-bit) and drops the binaries into `releases/`. It
+auto-installs `cross`, `cargo-zigbuild`, and `zig` if they're missing.
+
+Requirements on the build host:
+
+- Linux (WSL works)
+- [Rust / rustup](https://rustup.rs/)
+- Docker daemon running (used by `cross` for the Windows and Linux targets)
+
+```bash
+./build-releases.sh
 ```
 
 ---
@@ -59,8 +78,11 @@ cw-trainer [OPTIONS]
 | `--wpm <WPM>` | `20` | Character speed in WPM (5–150) |
 | `--eff <EFF>` | `15` | Effective (Farnsworth) speed — controls letter/word spacing |
 | `--tone <HZ>` | `600` | Tone frequency in Hz (250–990) |
-| `--lang <LANG>` | `en` | Language: `en`, `de`, or `both` |
-| `--words <N>` | `5` | Number of words per sentence |
+| `--lang <LANG>` | `en` | Language: `en`, `de`, or `both` (ignored in `--callsigns` mode) |
+| `--words <N>` | `5` | Number of words (or callsigns) per round |
+| `--callsigns` | off | Practice amateur-radio callsigns instead of random sentences |
+| `--callsigns-file <PATH>` | auto | Path to the callsigns list; default is `callsigns.txt` in CWD, then next to the binary. Passing this flag also implies `--callsigns`. |
+| `--mycall <CALL>` | — | Your own callsign. Mixed into each round (~1 slot in 3) so you train instant recognition of your own call. Implies `--callsigns`. |
 
 ### Examples
 
@@ -76,6 +98,28 @@ cw-trainer [OPTIONS]
 
 # Fast session, English and German mixed
 ./cw-trainer --wpm 30 --eff 25 --lang both --words 6
+
+# Callsign practice — 3 random callsigns per round at 25 WPM, 6 WPM effective
+./cw-trainer --callsigns --words 3 --wpm 25 --eff 6
+
+# Use your own callsigns list
+./cw-trainer --callsigns --callsigns-file ~/lists/dx-contest.txt
+
+# Include your own callsign in the mix (implies --callsigns)
+./cw-trainer --mycall DL1XYZ --wpm 25 --eff 6
+```
+
+### Callsigns file format
+
+`callsigns.txt` is a plain-text file containing double-quoted callsigns
+separated by commas. Whitespace, blank lines, and lines starting with `#` or
+`//` are ignored. Callsigns are case-insensitive.
+
+```
+"K1ABC","K2BCD","K3CDE"
+"DL1ABC","DL2BCD"
+# Contest list
+"VE1ABC","G4DEF"
 ```
 
 ---
@@ -106,8 +150,12 @@ Missed or wrong words are shown in `[brackets]` in the diff; missing words are s
 
 ## Requirements
 
-- **Linux / macOS**: `aplay` must be installed (`sudo apt install alsa-utils` on Debian/Ubuntu)
-- **Windows**: audio playback via `aplay` is not natively available — WSL or a ported build is recommended
+Audio playback is handled per-platform, with no extra setup on macOS or Windows:
+
+- **Linux**: `aplay` (ALSA) or `paplay` (PulseAudio). On Debian/Ubuntu:
+  `sudo apt install alsa-utils` or `pulseaudio-utils`.
+- **macOS**: uses the built-in `afplay` — nothing to install.
+- **Windows**: uses PowerShell's `System.Media.SoundPlayer` — nothing to install.
 
 ---
 
