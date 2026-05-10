@@ -9,6 +9,7 @@ It generates random sentences, plays them as audio CW, and scores your copy.
 
 - Generates random sentences in **English**, **German**, or both
 - **Callsign mode** — practice amateur-radio callsigns from a user-editable list
+- **Character-group mode** — drill random letter (and optionally digit) groups of 1–6 characters
 - Cross-platform audio playback — works on Linux, macOS, and Windows out of the box
 - Farnsworth timing — character speed and effective speed are independent
 - Configurable tone frequency, words per sentence, and WPM
@@ -83,6 +84,9 @@ cw-trainer [OPTIONS]
 | `--callsigns` | off | Practice amateur-radio callsigns instead of random sentences |
 | `--callsigns-file <PATH>` | auto | Path to the callsigns list; default is `callsigns.txt` in CWD, then next to the binary. Passing this flag also implies `--callsigns`. |
 | `--mycall <CALL>` | — | Your own callsign. Mixed into each round (~1 slot in 3) so you train instant recognition of your own call. Implies `--callsigns`. |
+| `--chars` | off | Practice random character groups instead of sentences/callsigns. Each group is one "word" for scoring. |
+| `--group-size <N>` | `1` | Characters per group when `--chars` is set (1–6). |
+| `--with-numbers` | off | Include digits 0–9 alongside letters in `--chars` mode. Without this flag, only A–Z are used. |
 
 ### Examples
 
@@ -107,6 +111,15 @@ cw-trainer [OPTIONS]
 
 # Include your own callsign in the mix (implies --callsigns)
 ./cw-trainer --mycall DL1XYZ --wpm 25 --eff 6
+
+# Single-character drill, letters only — 10 single chars per round
+./cw-trainer --chars --words 10
+
+# 5-character letter+number groups (Koch/contest style)
+./cw-trainer --chars --group-size 5 --with-numbers --words 5
+
+# 3-character groups, letters only, fast Farnsworth practice
+./cw-trainer --chars --group-size 3 --wpm 25 --eff 12
 ```
 
 ### Callsigns file format

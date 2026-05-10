@@ -45,6 +45,20 @@ struct Args {
     /// Implies --callsigns.
     #[arg(long)]
     mycall: Option<String>,
+
+    /// Practice random character groups instead of sentences or callsigns.
+    /// Each "word" is a random group of letters (and optionally digits).
+    #[arg(long, default_value_t = false)]
+    chars: bool,
+
+    /// Number of characters per group when using --chars (1-6).
+    #[arg(long, default_value_t = 1)]
+    group_size: usize,
+
+    /// Include digits 0-9 alongside letters in --chars mode.
+    /// Without this flag, only letters A-Z are used.
+    #[arg(long, default_value_t = false)]
+    with_numbers: bool,
 }
 
 // ── Morse table ───────────────────────────────────────────────────────────────
@@ -208,6 +222,33 @@ fn gen_sentence(lang: &str, n: usize) -> String {
         "both" => if fastrand::bool() { gen_sentence_en(n) } else { gen_sentence_de(n) },
         _      => gen_sentence_en(n),
     }
+}
+
+// ── Random character / digit groups ──────────────────────────────────────────
+/// Build the pool of characters used for char-drill mode.
+/// Always includes A-Z; includes 0-9 when `with_numbers` is true.
+fn char_pool(with_numbers: bool) -> Vec<char> {
+    let mut pool: Vec<char> = (b'A'..=b'Z').map(|b| b as char).collect();
+    if with_numbers {
+        pool.extend((b'0'..=b'9').map(|b| b as char));
+    }
+    pool
+}
+
+/// Generate `n_groups` random groups, each of `group_size` characters,
+/// drawn uniformly from the pool. Groups are separated by single spaces
+/// so the existing playback / scoring code treats each group as one "word".
+fn gen_char_groups(n_groups: usize, group_size: usize, with_numbers: bool) -> String {
+    let pool = char_pool(with_numbers);
+    let mut groups: Vec<String> = Vec::with_capacity(n_groups);
+    for _ in 0..n_groups {
+        let mut g = String::with_capacity(group_size);
+        for _ in 0..group_size {
+            g.push(pool[fastrand::usize(0..pool.len())]);
+        }
+        groups.push(g);
+    }
+    groups.join(" ")
 }
 
 // ── Callsigns ─────────────────────────────────────────────────────────────────
@@ -412,6 +453,23 @@ fn main() {
     // Otherwise those flags would be silently ignored, which is surprising.
     let callsigns_mode = args.callsigns || args.callsigns_file.is_some() || mycall.is_some();
 
+    // --chars / --callsigns are mutually exclusive — they describe different
+    // training drills and would silently shadow each other otherwise.
+    if args.chars && callsigns_mode {
+        eprintln!("error: --chars cannot be combined with --callsigns / --callsigns-file / --mycall.");
+        std::process::exit(2);
+    }
+
+    // Validate group size when --chars is in use. Range chosen to match the
+    // user-facing options (1-6 characters per group).
+    if args.chars && !(1..=6).contains(&args.group_size) {
+        eprintln!(
+            "error: --group-size must be between 1 and 6 (got {}).",
+            args.group_size
+        );
+        std::process::exit(2);
+    }
+
     // Load the callsigns list up front (fail fast if the file is missing).
     let callsigns_list: Option<Vec<String>> = if callsigns_mode {
         let path = resolve_callsigns_path(args.callsigns_file.as_ref())
@@ -437,8 +495,29 @@ fn main() {
         None
     };
 
-    let mode_label = if callsigns_mode { "callsigns" } else { args.lang.as_str() };
-    let per_round_label = if callsigns_mode { "Calls" } else { "Words" };
+    let chars_mode_label: String = if args.chars {
+        if args.with_numbers {
+            format!("chars+digits x{}", args.group_size)
+        } else {
+            format!("chars x{}", args.group_size)
+        }
+    } else {
+        String::new()
+    };
+    let mode_label: &str = if args.chars {
+        chars_mode_label.as_str()
+    } else if callsigns_mode {
+        "callsigns"
+    } else {
+        args.lang.as_str()
+    };
+    let per_round_label = if args.chars {
+        "Groups"
+    } else if callsigns_mode {
+        "Calls"
+    } else {
+        "Words"
+    };
 
     println!();
     println!("╔══════════════════════════════════════╗");
@@ -460,9 +539,13 @@ fn main() {
 
     loop {
         total_rounds += 1;
-        let sentence = match &callsigns_list {
-            Some(list) => pick_callsigns(list, mycall.as_deref(), args.words),
-            None       => gen_sentence(&args.lang, args.words),
+        let sentence = if args.chars {
+            gen_char_groups(args.words, args.group_size, args.with_numbers)
+        } else {
+            match &callsigns_list {
+                Some(list) => pick_callsigns(list, mycall.as_deref(), args.words),
+                None       => gen_sentence(&args.lang, args.words),
+            }
         };
         println!("── Round {} ─────────────────────────────", total_rounds);
         println!("  (generating CW…)");
